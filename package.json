@@ -1,6 +1,6 @@
 {
   "name": "pi-hot-idle-compaction",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi extension that keeps long sessions cheap across idle gaps: cache-hitting summaries, lazy tool-result stubbing, and cost-capped keepalives.",
   "keywords": [
     "compaction",
@@ -8,6 +8,10 @@
     "pi-package",
     "prompt-cache"
   ],
+  "homepage": "https://github.com/lytedev/pi-hot-idle-compaction#readme",
+  "bugs": {
+    "url": "https://github.com/lytedev/pi-hot-idle-compaction/issues"
+  },
   "license": "MIT",
   "author": "Daniel Flanagan",
   "repository": {
@@ -45,6 +49,7 @@
   "pi": {
     "extensions": [
       "./src/index.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/lytedev/pi-hot-idle-compaction/3fd202c35b99a96cb095e22d59de638c67c82dc9/docs/hot-idle-status.png"
   }
 }

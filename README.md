@@ -3,6 +3,8 @@
 > **100% AI-written software.** Every line of code, tests and documentation in this repository was written
 > by AI coding agents, directed by a human maintainer. Licensed under the [MIT License](LICENSE).
 
+![/hot-idle status, rendered from a session against an offline fake provider](https://raw.githubusercontent.com/lytedev/pi-hot-idle-compaction/3fd202c35b99a96cb095e22d59de638c67c82dc9/docs/hot-idle-status.png)
+
 A [pi](https://github.com/earendil-works/pi) extension that keeps long sessions cheap on providers whose
 prompt cache expires. It summarises while the cache is still warm, drops stale tool output instead of paying
 to re-read it, and can keep the cache alive for exactly as long as that is cheaper than missing it.
