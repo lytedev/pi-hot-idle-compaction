@@ -73,6 +73,7 @@ const REAL_CLOCK: Clock = {
   cancelTimer: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
 };
 
+const HERDR_WORKING_EVENT_NAME = "herdr:working";
 const MINIMUM_PREFIX_TOKENS_WORTH_OBSERVING = 2_000;
 
 type ScheduledAction = {
@@ -133,6 +134,10 @@ export function createHotIdleCompaction(clock: Clock) {
     let gapBeforeCurrentRequestSeconds: number | undefined;
     let prefixOfPreviousRequestTokens: number | undefined;
     let nextRequestChangesPrefixOnPurpose = false;
+
+    function announceHerdrWork(active: boolean, label?: string) {
+      pi.events.emit(HERDR_WORKING_EVENT_NAME, active ? { active, label } : { active });
+    }
 
     function settings(): HotIdleSettings {
       return parseSettings((pi.getSettings() as Record<string, unknown>)[SETTINGS_KEY]);
@@ -274,12 +279,15 @@ export function createHotIdleCompaction(clock: Clock) {
       if (compactionStartedByUsIsInFlight) return;
       compactionStartedByUsIsInFlight = true;
       originOfCompactionWeStarted = origin;
+      announceHerdrWork(true, `hot-idle ${origin}`);
       context.compact({
         onComplete: () => {
+          announceHerdrWork(false);
           compactionStartedByUsIsInFlight = false;
           originOfCompactionWeStarted = undefined;
         },
         onError: (error) => {
+          announceHerdrWork(false);
           compactionStartedByUsIsInFlight = false;
           originOfCompactionWeStarted = undefined;
           lastDeclinedReason = `${origin} failed: ${error.message}`;
@@ -291,6 +299,7 @@ export function createHotIdleCompaction(clock: Clock) {
       const model = context.model;
       const transcript = capture.transcriptThatNextRequestWouldStartWith();
       if (!model || !transcript) return;
+      announceHerdrWork(true, "hot-idle keepalive ping");
       const outcome = await sendCacheHittingRequest({
         context,
         model,
@@ -299,7 +308,7 @@ export function createHotIdleCompaction(clock: Clock) {
         maximumOutputTokens: 1,
         thinkingLevel: context.thinkingLevel,
         signal: undefined,
-      });
+      }).finally(() => announceHerdrWork(false));
       if (outcome.kind === "failed") {
         keepaliveDisabledBecause = `ping failed: ${outcome.reason}`;
         return;
@@ -485,6 +494,7 @@ export function createHotIdleCompaction(clock: Clock) {
         return;
       }
 
+      announceHerdrWork(true, "hot-idle summary");
       const outcome = await sendCacheHittingRequest({
         context,
         model,
@@ -493,7 +503,7 @@ export function createHotIdleCompaction(clock: Clock) {
         maximumOutputTokens: currentSettings.summary.maxOutputTokens,
         thinkingLevel: context.thinkingLevel,
         signal: event.signal,
-      });
+      }).finally(() => announceHerdrWork(false));
       if (outcome.kind === "failed") {
         lastDeclinedReason = `cache-hitting summary failed (${outcome.reason}); fell back to pi's summary`;
         return;

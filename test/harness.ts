@@ -192,6 +192,9 @@ export async function startSession(input: {
     },
   });
 
+  let events: { on(name: string, handler: (payload: unknown) => void): unknown } = {
+    on: () => undefined,
+  };
   const resourceLoader = new DefaultResourceLoader({
     cwd: directory,
     agentDir: directory,
@@ -205,6 +208,7 @@ export async function startSession(input: {
       createHotIdleCompaction(input.clock),
       (pi) => {
         pi.registerTool(bigTool);
+        events = pi.events;
       },
     ],
   });
@@ -224,6 +228,9 @@ export async function startSession(input: {
   await session.bindExtensions({});
 
   return {
+    get events() {
+      return events;
+    },
     session,
     requests,
     scriptedReplies,

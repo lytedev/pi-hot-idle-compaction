@@ -176,6 +176,16 @@ microcompact numbers were read from the binary, not from the documentation.
 Differences: the lifetime is per provider or model and configurable instead of fixed at one hour, and
 keepalive is capped by break-even instead of unbounded.
 
+## herdr and Collie
+
+[herdr](https://github.com/ogulcancelik/herdr)'s pi integration reports a pane as idle as soon as pi's agent
+loop settles, and [Collie](https://github.com/AltanS/collie) mirrors that state to a phone. This extension does
+real work while the loop is idle (idle summaries, threshold compaction, keepalive pings), so it announces each
+piece as `herdr:working` on pi's extension event bus, `{ active: true, label }` when it starts and
+`{ active: false }` when it ends, one pair per action. herdr counts these, so the pane shows working instead of
+done while a summary runs. Where no listener exists the events do nothing. The extension opens no dialogs, so it
+never needs `herdr:blocked`.
+
 ## Design notes
 
 Things found while building this against a real OpenAI-compatible provider with automatic prefix caching.

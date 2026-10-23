@@ -524,3 +524,42 @@ describe("/hot-idle and passive calibration", () => {
     harness.session.dispose();
   });
 });
+
+describe("herdr and collie integration", () => {
+  test("background_work_is_announced_as_herdr_working_with_every_start_matched_by_a_stop", async () => {
+    const clock = new ManualClock();
+    const harness = await startSession({
+      settings: settingsWith({
+        idleSummary: { enabled: true, minContextTokens: 1_000 },
+        keepalive: { enabled: true, maximumPings: 1 },
+      }),
+      cacheLifetimeSecondsOfFakeProvider: 600,
+      clock,
+    });
+    const announcements: { active: boolean; label?: string }[] = [];
+    harness.events.on("herdr:working", (payload) => announcements.push(payload as never));
+    await runPromptWithToolUses(harness, 6);
+    await clock.advanceSeconds(541);
+    await settleMicrotasks();
+    assert.ok(
+      summaryRequests(harness.requests).length >= 1,
+      "the idle summary must have run for this test to mean anything",
+    );
+    const starts = announcements.filter((announcement) => announcement.active);
+    const stops = announcements.filter((announcement) => !announcement.active);
+    assert.ok(
+      starts.length >= 1,
+      "the idle summary happens while pi's agent loop is idle, so herdr and Collie only see it if it is announced as working",
+    );
+    assert.equal(
+      starts.length,
+      stops.length,
+      "herdr counts working announcements, so each start needs exactly one stop or the pane would show working forever",
+    );
+    assert.ok(
+      starts.every((announcement) => typeof announcement.label === "string"),
+      "starts carry a label that herdr can show",
+    );
+    harness.session.dispose();
+  });
+});
