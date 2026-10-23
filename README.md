@@ -1,5 +1,8 @@
 # pi-hot-idle-compaction
 
+> **100% AI-written software.** Every line of code, test and documentation in this repository was written by
+> an AI model (Claude), directed and reviewed by a human maintainer. Licensed under the [MIT License](LICENSE).
+
 A [pi](https://github.com/earendil-works/pi) extension that keeps long sessions cheap on providers whose
 prompt cache expires. It summarises while the cache is still warm, drops stale tool output instead of paying
 to re-read it, and can keep the cache alive for exactly as long as that is cheaper than missing it.
