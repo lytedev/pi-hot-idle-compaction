@@ -1,0 +1,46 @@
+{
+  "name": "pi-hot-idle-compaction",
+  "version": "0.1.0",
+  "description": "Pi extension that keeps long sessions cheap across idle gaps: cache-hitting summaries, lazy tool-result stubbing, and cost-capped keepalives.",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "compaction",
+    "prompt-cache"
+  ],
+  "license": "MIT",
+  "author": "Daniel Flanagan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lytedev/pi-hot-idle-compaction.git"
+  },
+  "type": "module",
+  "files": [
+    "src",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --test 'test/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": ">=1.4.0",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
