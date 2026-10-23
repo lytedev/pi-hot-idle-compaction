@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "Pi extension that keeps long sessions cheap across idle gaps: cache-hitting summaries, lazy tool-result stubbing, and cost-capped keepalives.",
   "keywords": [
-    "pi-package",
-    "pi-extension",
     "compaction",
+    "pi-extension",
+    "pi-package",
     "prompt-cache"
   ],
   "license": "MIT",
@@ -14,33 +14,39 @@
     "type": "git",
     "url": "git+https://github.com/lytedev/pi-hot-idle-compaction.git"
   },
-  "type": "module",
   "files": [
     "src",
     "README.md",
     "LICENSE"
   ],
-  "pi": {
-    "extensions": [
-      "./src/index.ts"
-    ]
-  },
+  "type": "module",
   "scripts": {
-    "test": "node --test --test-force-exit 'test/*.test.ts'",
+    "test": "vp test",
+    "check": "vp check",
     "typecheck": "tsc --noEmit",
-    "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format": "vp fmt",
+    "format:check": "vp fmt --check"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-agent-core": "1.4.0",
+    "@earendil-works/pi-ai": "1.4.0",
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0",
+    "vite-plus": "^1.4.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": ">=1.4.0"
   },
-  "devDependencies": {
-    "@earendil-works/pi-ai": "1.4.0",
-    "@earendil-works/pi-coding-agent": "1.4.0",
-    "@types/node": "^24.0.0",
-    "typescript": "^5.9.0",
-    "@earendil-works/pi-agent-core": "1.4.0"
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0",
+    "vitest": "5.0.5"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
   }
 }

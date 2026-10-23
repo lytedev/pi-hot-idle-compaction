@@ -24,12 +24,12 @@ price for every token again.
 Write `C` for the context size in tokens, `u` for the uncached input price, `r` for the cached-read price and
 `o` for the output price (all per token). The cost of one return after a break:
 
-| What happens on return                                    | Cost                         |
-| --------------------------------------------------------- | ---------------------------- |
-| Cache expired, nothing done (cold miss)                   | `C*u`                        |
-| Old tool results stubbed on resume, fraction `f` removed  | `(1-f)*C*u`                  |
-| Summary sent before expiry and served from cache          | `C*r + S*u + O*o`            |
-| Cache read on each model call while the context stays big | `C*r` per call               |
+| What happens on return                                    | Cost              |
+| --------------------------------------------------------- | ----------------- |
+| Cache expired, nothing done (cold miss)                   | `C*u`             |
+| Old tool results stubbed on resume, fraction `f` removed  | `(1-f)*C*u`       |
+| Summary sent before expiry and served from cache          | `C*r + S*u + O*o` |
+| Cache read on each model call while the context stays big | `C*r` per call    |
 
 `S` is the instruction appended to ask for the summary (a few hundred tokens) and `O` the summary length.
 Worked example with DeepSeek V4 Pro prices from one provider (`u` = $0.66/M, `r` = $0.022/M, `o` = $1.98/M)
@@ -97,25 +97,25 @@ request, the idle gap before it and whether the provider served the previous pre
 
 Under `hotIdleCompaction` in `~/.pi/agent/settings.json` or `.pi/settings.json`. Every key is optional.
 
-| Key                                         | Default | Meaning |
-| ------------------------------------------- | ------- | ------- |
-| `enabled`                                   | `true`  | Master switch |
-| `ttlSeconds`                                | model declaration, else 300 | Cache lifetime |
-| `minContextTokens`                          | 100000  | Do nothing below this |
-| `compactAtTokens`                           | 300000  | Threshold compaction |
-| `summary.maxOutputTokens`                   | 8000    | Summary length cap (`O`) |
-| `summary.minimumCacheReadFraction`          | 0.8     | Required cached share of the summary prefix |
-| `stubbing.enabled`                          | `true`  | |
-| `stubbing.graceSeconds`                     | 60      | Idle beyond lifetime + this before stubbing |
-| `stubbing.keepMostRecentToolUses`           | 12      | Never stubbed |
-| `stubbing.minimumTokensCleared`             | 20000   | |
-| `stubbing.minimumFractionOfContextCleared`  | 0.3     | |
-| `idleSummary.enabled`                       | `true`  | |
-| `idleSummary.minContextTokens`              | 250000  | `summaryMinTokens` |
-| `idleSummary.maximumTtlSeconds`             | 7200    | Longer lifetimes are rarely outlasted by idle gaps |
-| `idleSummary.lateToleranceSeconds`          | 60      | Refuse when firing later than this |
-| `keepalive.enabled`                         | `false` | |
-| `keepalive.maximumPings`                    | none    | Cap below the break-even count |
+| Key                                        | Default                     | Meaning                                            |
+| ------------------------------------------ | --------------------------- | -------------------------------------------------- |
+| `enabled`                                  | `true`                      | Master switch                                      |
+| `ttlSeconds`                               | model declaration, else 300 | Cache lifetime                                     |
+| `minContextTokens`                         | 100000                      | Do nothing below this                              |
+| `compactAtTokens`                          | 300000                      | Threshold compaction                               |
+| `summary.maxOutputTokens`                  | 8000                        | Summary length cap (`O`)                           |
+| `summary.minimumCacheReadFraction`         | 0.8                         | Required cached share of the summary prefix        |
+| `stubbing.enabled`                         | `true`                      |                                                    |
+| `stubbing.graceSeconds`                    | 60                          | Idle beyond lifetime + this before stubbing        |
+| `stubbing.keepMostRecentToolUses`          | 12                          | Never stubbed                                      |
+| `stubbing.minimumTokensCleared`            | 20000                       |                                                    |
+| `stubbing.minimumFractionOfContextCleared` | 0.3                         |                                                    |
+| `idleSummary.enabled`                      | `true`                      |                                                    |
+| `idleSummary.minContextTokens`             | 250000                      | `summaryMinTokens`                                 |
+| `idleSummary.maximumTtlSeconds`            | 7200                        | Longer lifetimes are rarely outlasted by idle gaps |
+| `idleSummary.lateToleranceSeconds`         | 60                          | Refuse when firing later than this                 |
+| `keepalive.enabled`                        | `false`                     |                                                    |
+| `keepalive.maximumPings`                   | none                        | Cap below the break-even count                     |
 
 Eight of these can be overridden per provider (`perProvider["provider"]`) or per model
 (`perModel["provider/model"]`, which wins): `ttlSeconds`, `minContextTokens`, `compactAtTokens`,
@@ -233,11 +233,12 @@ The test suite makes no network calls and costs nothing.
   correctly.
 
 ```
-nix develop        # node 24, biome
+nix develop        # node 24
 npm install
-npm test           # node --test, no build step
-npm run typecheck
-npm run format
+npm test           # vp test (Vitest via Vite+)
+npm run check      # vp check: format, lint, type-aware checks
+npm run typecheck  # tsc
+npm run format     # vp fmt
 ```
 
 ## License

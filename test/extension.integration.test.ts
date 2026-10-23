@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, mock, test } from "node:test";
+import { describe, test, vi } from "vite-plus/test";
 import { type RecordedRequest, ManualClock, settleMicrotasks, startSession } from "./harness.ts";
 
 const SIX_TOOL_CHARACTERS = "x".repeat(4_000);
@@ -452,12 +452,12 @@ describe("keepalive", () => {
 describe("/hot-idle and passive calibration", () => {
   async function statusText(harness: Awaited<ReturnType<typeof startSession>>) {
     const logged: string[] = [];
-    const spy = mock.method(console, "log", (...parts: unknown[]) => {
+    const spy = vi.spyOn(console, "log").mockImplementation((...parts: unknown[]) => {
       logged.push(parts.join(" "));
     });
     await harness.session.prompt("/hot-idle");
     await settleMicrotasks();
-    spy.mock.restore();
+    spy.mockRestore();
     return logged.join("\n");
   }
 
