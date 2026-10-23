@@ -1,16 +1,36 @@
 export const SETTINGS_KEY = "hotIdleCompaction";
 
-export type PerModelSettings = {
-  compactAtTokens?: number;
+export const FALLBACK_TTL_SECONDS = 300;
+
+export type SettingsOverrides = {
   ttlSeconds?: number;
+  minContextTokens?: number;
+  compactAtTokens?: number;
+  summaryMinTokens?: number;
+  keepMostRecentToolUses?: number;
+  minimumTokensCleared?: number;
+  minimumFractionOfContextCleared?: number;
+  keepaliveMaximumPings?: number;
 };
+
+const OVERRIDE_KEYS: (keyof SettingsOverrides)[] = [
+  "ttlSeconds",
+  "minContextTokens",
+  "compactAtTokens",
+  "summaryMinTokens",
+  "keepMostRecentToolUses",
+  "minimumTokensCleared",
+  "minimumFractionOfContextCleared",
+  "keepaliveMaximumPings",
+];
 
 export type HotIdleSettings = {
   enabled: boolean;
   minContextTokens: number;
   compactAtTokens: number;
   ttlSeconds: number | undefined;
-  perModel: Record<string, PerModelSettings>;
+  perProvider: Record<string, SettingsOverrides>;
+  perModel: Record<string, SettingsOverrides>;
   summary: {
     maxOutputTokens: number;
     minimumCacheReadFraction: number;
@@ -39,6 +59,7 @@ export const DEFAULT_SETTINGS: HotIdleSettings = {
   minContextTokens: 100_000,
   compactAtTokens: 300_000,
   ttlSeconds: undefined,
+  perProvider: {},
   perModel: {},
   summary: { maxOutputTokens: 8_000, minimumCacheReadFraction: 0.8 },
   stubbing: {
@@ -104,26 +125,8 @@ export function parseSettings(rawSettings: unknown): HotIdleSettings {
   const stubbing = asPlainObject(root.stubbing, ".stubbing");
   const idleSummary = asPlainObject(root.idleSummary, ".idleSummary");
   const keepalive = asPlainObject(root.keepalive, ".keepalive");
-  const rawPerModel = asPlainObject(root.perModel, ".perModel");
-
-  const perModel: Record<string, PerModelSettings> = {};
-  for (const [modelKey, rawModelSettings] of Object.entries(rawPerModel)) {
-    const modelSettings = asPlainObject(rawModelSettings, `.perModel["${modelKey}"]`);
-    perModel[modelKey] = {
-      compactAtTokens: readOptionalNumber(
-        modelSettings,
-        "compactAtTokens",
-        undefined,
-        `.perModel["${modelKey}"]`,
-      ),
-      ttlSeconds: readOptionalNumber(
-        modelSettings,
-        "ttlSeconds",
-        undefined,
-        `.perModel["${modelKey}"]`,
-      ),
-    };
-  }
+  const perProvider = parseOverrideTable(root.perProvider, ".perProvider");
+  const perModel = parseOverrideTable(root.perModel, ".perModel");
 
   const defaults = DEFAULT_SETTINGS;
   return {
@@ -131,6 +134,7 @@ export function parseSettings(rawSettings: unknown): HotIdleSettings {
     minContextTokens: readNumber(root, "minContextTokens", defaults.minContextTokens, ""),
     compactAtTokens: readNumber(root, "compactAtTokens", defaults.compactAtTokens, ""),
     ttlSeconds: readOptionalNumber(root, "ttlSeconds", defaults.ttlSeconds, ""),
+    perProvider,
     perModel,
     summary: {
       maxOutputTokens: readNumber(
@@ -206,14 +210,79 @@ export function parseSettings(rawSettings: unknown): HotIdleSettings {
   };
 }
 
-export function compactAtTokensForModel(settings: HotIdleSettings, modelKey: string): number {
-  return settings.perModel[modelKey]?.compactAtTokens ?? settings.compactAtTokens;
+function parseOverrideTable(rawTable: unknown, path: string): Record<string, SettingsOverrides> {
+  const table: Record<string, SettingsOverrides> = {};
+  for (const [key, rawOverrides] of Object.entries(asPlainObject(rawTable, path))) {
+    const overridePath = `${path}["${key}"]`;
+    const overrides = asPlainObject(rawOverrides, overridePath);
+    const parsed: SettingsOverrides = {};
+    for (const overrideKey of OVERRIDE_KEYS) {
+      const value = readOptionalNumber(overrides, overrideKey, undefined, overridePath);
+      if (value !== undefined) parsed[overrideKey] = value;
+    }
+    for (const unknownKey of Object.keys(overrides)) {
+      if (!(OVERRIDE_KEYS as string[]).includes(unknownKey)) {
+        throw new Error(`${SETTINGS_KEY}${overridePath}.${unknownKey} is not a known override`);
+      }
+    }
+    table[key] = parsed;
+  }
+  return table;
 }
 
-export function ttlSecondsForModel(
+export type TtlSource = "setting" | "model-declaration" | "fallback-guess";
+
+export type ResolvedForModel = {
+  settings: HotIdleSettings;
+  ttlSeconds: number;
+  ttlSource: TtlSource;
+};
+
+export function resolveSettingsForModel(
   settings: HotIdleSettings,
-  modelKey: string,
+  providerId: string,
+  modelId: string,
   declaredByModelSeconds: number | undefined,
-): number | undefined {
-  return settings.perModel[modelKey]?.ttlSeconds ?? settings.ttlSeconds ?? declaredByModelSeconds;
+): ResolvedForModel {
+  const layers: (SettingsOverrides | undefined)[] = [
+    settings.perProvider[providerId],
+    settings.perModel[`${providerId}/${modelId}`],
+  ];
+  const merged: SettingsOverrides = {};
+  for (const layer of layers) Object.assign(merged, layer);
+
+  const resolved: HotIdleSettings = {
+    ...settings,
+    minContextTokens: merged.minContextTokens ?? settings.minContextTokens,
+    compactAtTokens: merged.compactAtTokens ?? settings.compactAtTokens,
+    stubbing: {
+      ...settings.stubbing,
+      keepMostRecentToolUses:
+        merged.keepMostRecentToolUses ?? settings.stubbing.keepMostRecentToolUses,
+      minimumTokensCleared: merged.minimumTokensCleared ?? settings.stubbing.minimumTokensCleared,
+      minimumFractionOfContextCleared:
+        merged.minimumFractionOfContextCleared ?? settings.stubbing.minimumFractionOfContextCleared,
+    },
+    idleSummary: {
+      ...settings.idleSummary,
+      minContextTokens: merged.summaryMinTokens ?? settings.idleSummary.minContextTokens,
+    },
+    keepalive: {
+      ...settings.keepalive,
+      maximumPings: merged.keepaliveMaximumPings ?? settings.keepalive.maximumPings,
+    },
+  };
+
+  const overriddenTtl = merged.ttlSeconds ?? settings.ttlSeconds;
+  if (overriddenTtl !== undefined) {
+    return { settings: resolved, ttlSeconds: overriddenTtl, ttlSource: "setting" };
+  }
+  if (declaredByModelSeconds !== undefined) {
+    return {
+      settings: resolved,
+      ttlSeconds: declaredByModelSeconds,
+      ttlSource: "model-declaration",
+    };
+  }
+  return { settings: resolved, ttlSeconds: FALLBACK_TTL_SECONDS, ttlSource: "fallback-guess" };
 }
