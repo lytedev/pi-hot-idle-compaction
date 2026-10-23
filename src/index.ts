@@ -48,7 +48,7 @@ import {
 } from "./stubbing.ts";
 
 const MILLISECONDS_PER_SECOND = 1000;
-const APPROXIMATE_CHARACTERS_PER_TOKEN = 4;
+const FALLBACK_CHARACTERS_PER_TOKEN = 3;
 
 type ScheduledAction = {
   kind: "idle-summary" | "keepalive-ping";
@@ -73,15 +73,13 @@ function declaredTtlSecondsOf(model: Model<Api>): number | undefined {
   return model.promptCache?.short ?? model.promptCache?.long;
 }
 
-function estimateTokensInContent(content: unknown): number {
-  if (typeof content === "string")
-    return Math.ceil(content.length / APPROXIMATE_CHARACTERS_PER_TOKEN);
+function charactersInContent(content: unknown): number {
+  if (typeof content === "string") return content.length;
   if (!Array.isArray(content)) return 0;
-  const characters = content.reduce(
+  return content.reduce(
     (sum, block) => sum + (block?.type === "text" ? String(block.text).length : 1000),
     0,
   );
-  return Math.ceil(characters / APPROXIMATE_CHARACTERS_PER_TOKEN);
 }
 
 function formatDollars(dollars: number): string {
@@ -318,13 +316,18 @@ export default function hotIdleCompaction(pi: ExtensionAPI) {
     if (!currentSettings.enabled || !model) return;
 
     if (lastCacheTouchEpochMilliseconds !== undefined) {
+      const charactersInContext = JSON.stringify(event.messages).length;
       const contextTokens =
         context.getContextUsage()?.tokens ??
-        Math.ceil(JSON.stringify(event.messages).length / APPROXIMATE_CHARACTERS_PER_TOKEN);
+        Math.ceil(charactersInContext / FALLBACK_CHARACTERS_PER_TOKEN);
+      const tokensPerCharacterMeasuredOnThisContext = contextTokens / charactersInContext;
       const stubbableMessages = event.messages as StubbableMessage[];
       const plan = planToolResultStubbing({
         toolUsesOldestFirst: collectToolUsesOldestFirst(stubbableMessages, (message) =>
-          estimateTokensInContent((message as { content?: unknown }).content),
+          Math.ceil(
+            charactersInContent((message as { content?: unknown }).content) *
+              tokensPerCharacterMeasuredOnThisContext,
+          ),
         ),
         alreadyStubbedToolCallIds: stubbedToolCallIds,
         contextTokens,
