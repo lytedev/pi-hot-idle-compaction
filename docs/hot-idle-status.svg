@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="788" height="290" viewBox="0 0 788 290" font-family="DejaVu Sans Mono, monospace" font-size="16">
+<rect width="100%" height="100%" rx="10" fill="#1e1e1e"/>
+<text x="24" y="36" fill="#7ee787">> /hot-idle</text>
+<text x="24" y="58" fill="#d4d4d4">enabled: true</text>
+<text x="24" y="80" fill="#d4d4d4">context: unknown tokens (floor 1000)</text>
+<text x="24" y="102" fill="#d4d4d4">model: faux/faux-cached</text>
+<text x="24" y="124" fill="#d4d4d4">prompt cache lifetime: 3600s (from your hotIdleCompaction settings)</text>
+<text x="24" y="146" fill="#d4d4d4">compaction threshold: 1000000 tokens</text>
+<text x="24" y="168" fill="#d4d4d4">observed over 9 requests: cache hits after gaps up to 10.0 min, no misses yet</text>
+<text x="24" y="190" fill="#d4d4d4">idle for: 3300s</text>
+<text x="24" y="212" fill="#d4d4d4">next action: none</text>
+<text x="24" y="234" fill="#d4d4d4">stubbed tool results: 0</text>
+<text x="24" y="256" fill="#d4d4d4">actions this branch: 1, cost $0.0000, estimated saved $0.0191</text>
+</svg>
