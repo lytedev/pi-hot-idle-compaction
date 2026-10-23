@@ -33,14 +33,15 @@
     "format:check": "biome format ."
   },
   "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
     "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": ">=1.4.0",
-    "typebox": "*"
+    "@earendil-works/pi-coding-agent": ">=1.4.0"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "1.4.0",
     "@earendil-works/pi-coding-agent": "1.4.0",
     "@types/node": "^24.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "@earendil-works/pi-agent-core": "1.4.0"
   }
 }
