@@ -173,11 +173,45 @@ microcompact numbers were read from the binary, not from the documentation.
 Differences: the lifetime is per provider or model and configurable instead of fixed at one hour, and
 keepalive is capped by break-even instead of unbounded.
 
+## Design notes
+
+Things found while building this against a real OpenAI-compatible provider with automatic prefix caching.
+They are properties of how pi and such providers behave, not measurements of any one provider's prices or
+lifetimes.
+
+- **Do not send `tool_choice: "none"` on the summary request.** Some providers render the prompt without the
+  tool definitions when tool use is disabled, so the whole prefix differs and the cache misses completely. The
+  summary instruction tells the model not to call tools instead.
+- **`ctx.compact()` aborts a run in progress.** Called from `turn_end` it turned the in-flight request into an
+  `aborted` error. Threshold compaction is therefore decided at `agent_settled`, between prompts, when the last
+  request's prefix is also entirely cached. A single very long prompt can overshoot `compactAtTokens`; pi's own
+  overflow recovery is the backstop.
+- **The replay must end on a user message.** A request whose last message is an assistant message makes the
+  provider continue it and answer with an empty stop. The summary instruction is therefore always appended as a
+  user message.
+- **A large uncached tail defeats the idea.** If ten large tool results land in one turn they are not in the
+  cache, so a cache-hitting summary of that context reads almost nothing from it. `predictWhetherCachedSummaryCanHit`
+  checks how much of the context was in the last request and falls back to pi's summariser otherwise.
+- **pi's own summary can cost about the same on tool-heavy sessions.** Its serialiser truncates every tool
+  result to 2000 characters, so when most of the context is tool output its summary request is small. The
+  cache-hitting summary then wins on quality (it sees everything) rather than money. On conversations dominated
+  by prose and code it is the cheaper one.
+- **Token estimates for stubbing are calibrated on the session.** Each tool result's characters are scaled by
+  `contextTokens / characters`, using pi's measured usage, because a fixed characters-per-token ratio was off
+  by almost 2x on some text.
+- **Cache hits are block-granular.** Providers report cached tokens in blocks (for example 256 or 128 tokens),
+  so a fully cached prefix reads slightly less than its size; that is why the acceptance bar is a fraction
+  (default 0.8), not equality.
+
 ## Testing
 
 The test suite makes no network calls and costs nothing.
 
 - `test/*.test.ts` unit-test the cost model and every decision as pure functions.
+- `test/wire.integration.test.ts` runs a real pi session against a local fake chat-completions server that
+  returns scripted `usage` including `cached_tokens`. It checks the wire format of the summary request:
+  identical prefix, tool definitions present and unchanged, no `tool_choice`, final message a user instruction,
+  and that a scripted cache miss disables later cache-hitting summaries.
 - `test/extension.integration.test.ts` runs the real extension inside a real pi session
   (`createAgentSession`) against pi's faux provider, wrapped to simulate a prompt cache with a lifetime and
   driven by a manual clock. It checks that the summary request is the previous request's messages plus one
