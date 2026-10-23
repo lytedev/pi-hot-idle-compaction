@@ -236,8 +236,7 @@ The test suite makes no network calls and costs nothing.
 nix develop        # node 24
 npm install
 npm test           # vp test (Vitest via Vite+)
-npm run check      # vp check: format, lint, type-aware checks
-npm run typecheck  # tsc
+npm run check      # vp check: format, lint and type checks
 npm run format     # vp fmt
 ```
 

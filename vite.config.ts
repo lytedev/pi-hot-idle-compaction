@@ -5,6 +5,9 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
     testTimeout: 30_000,
   },
+  lint: {
+    options: { typeAware: true, typeCheck: true },
+  },
   fmt: {
     printWidth: 100,
     ignorePatterns: ["node_modules/**", "package-lock.json"],
