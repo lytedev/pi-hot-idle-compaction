@@ -170,3 +170,39 @@ export function planKeepalivePing(input: {
       input.lastCacheTouchEpochMilliseconds + secondsAfterTouch * MILLISECONDS_PER_SECOND,
   };
 }
+
+export type CachedSummaryPrediction =
+  | { worthAttempting: true }
+  | { worthAttempting: false; reason: string };
+
+export function predictWhetherCachedSummaryCanHit(input: {
+  tokensInLastRequestPrefix: number | undefined;
+  contextTokens: number;
+  minimumCacheReadFraction: number;
+  idleMilliseconds: number;
+  ttlSeconds: number | undefined;
+}): CachedSummaryPrediction {
+  if (input.ttlSeconds === undefined) {
+    return { worthAttempting: false, reason: "the prompt cache lifetime of this model is unknown" };
+  }
+  if (input.idleMilliseconds > input.ttlSeconds * MILLISECONDS_PER_SECOND) {
+    return {
+      worthAttempting: false,
+      reason: `the cache expired ${Math.round(input.idleMilliseconds / MILLISECONDS_PER_SECOND)}s after the last request, longer than its ${input.ttlSeconds}s lifetime`,
+    };
+  }
+  if (input.tokensInLastRequestPrefix === undefined) {
+    return {
+      worthAttempting: false,
+      reason: "no previous request in this process to share a prefix with",
+    };
+  }
+  const cachedFraction = input.tokensInLastRequestPrefix / input.contextTokens;
+  if (cachedFraction < input.minimumCacheReadFraction) {
+    return {
+      worthAttempting: false,
+      reason: `only ${(cachedFraction * 100).toFixed(0)}% of the ${input.contextTokens} token context was in the last request, under the ${(input.minimumCacheReadFraction * 100).toFixed(0)}% a cache-hitting summary needs`,
+    };
+  }
+  return { worthAttempting: true };
+}

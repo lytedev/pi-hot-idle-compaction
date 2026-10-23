@@ -6,6 +6,7 @@ import {
   judgeSummaryCacheRead,
   planIdleSummary,
   planKeepalivePing,
+  predictWhetherCachedSummaryCanHit,
   secondsAfterLastActivityToSummarise,
 } from "../src/policy.ts";
 import { DEFAULT_SETTINGS, parseSettings } from "../src/settings.ts";
@@ -325,6 +326,63 @@ describe("keepalive planning", () => {
       plan.action,
       "stop",
       `an unknown lifetime gives no deadline but the plan was ${JSON.stringify(plan)}`,
+    );
+  });
+});
+
+describe("predicting whether a cache-hitting summary can hit the cache", () => {
+  const prediction = (
+    overrides: Partial<Parameters<typeof predictWhetherCachedSummaryCanHit>[0]> = {},
+  ) =>
+    predictWhetherCachedSummaryCanHit({
+      tokensInLastRequestPrefix: 380_000,
+      contextTokens: 400_000,
+      minimumCacheReadFraction: 0.8,
+      idleMilliseconds: 10 * MINUTE,
+      ttlSeconds: 3600,
+      ...overrides,
+    });
+
+  test("a_context_that_is_ninety_five_percent_the_last_request_and_still_inside_the_lifetime_is_worth_attempting", () => {
+    const result = prediction();
+    assert.equal(
+      result.worthAttempting,
+      true,
+      `380000 of 400000 tokens cached inside the lifetime must be attempted but was ${JSON.stringify(result)}`,
+    );
+  });
+
+  test("a_context_that_just_gained_a_huge_uncached_tool_result_is_not_worth_attempting", () => {
+    const result = prediction({ tokensInLastRequestPrefix: 2_000, contextTokens: 116_000 });
+    assert.equal(
+      result.worthAttempting,
+      false,
+      `only 2% was in the last request so a default summary is cheaper but was ${JSON.stringify(result)}`,
+    );
+  });
+
+  test("a_cache_that_has_outlived_its_lifetime_is_not_worth_attempting", () => {
+    const result = prediction({ idleMilliseconds: 3601 * 1000 });
+    assert.equal(
+      result.worthAttempting,
+      false,
+      `3601s idle on a 3600s lifetime means a cold prefix but was ${JSON.stringify(result)}`,
+    );
+  });
+
+  test("an_unknown_lifetime_is_not_worth_attempting_because_expiry_cannot_be_ruled_out", () => {
+    assert.equal(
+      prediction({ ttlSeconds: undefined }).worthAttempting,
+      false,
+      "without a lifetime the cache may be gone",
+    );
+  });
+
+  test("no_previous_request_means_nothing_can_be_cached", () => {
+    assert.equal(
+      prediction({ tokensInLastRequestPrefix: undefined }).worthAttempting,
+      false,
+      "a fresh process has no shared prefix",
     );
   });
 });
